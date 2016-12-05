@@ -660,7 +660,7 @@ jQuery：
 		例如：："$('ul.lang>li.lang-javascript'); // 可以选出[<li class="lang-javascript">JavaScript</li>]"）
 	过滤器（Filter）：：
 		$(选择器：过滤条件)
-		一般不单独使用，它通常附加在选择器上， 例如：：
+		一般不单独使用，它通常附加在选择器上， 因为filter不能进入内嵌的DOM元素， 例如：：
 			$('ul.lang li'); // 选出JavaScript、Python和Lua 3个节点
 			$('ul.lang li:first-child'); // 仅选出JavaScript
 			$('ul.lang li:last-child'); // 仅选出Lua
@@ -684,7 +684,7 @@ jQuery：
 	以查找到的对象为基准，进行查找和过滤
 	find()：：
 		jQuery对象.find(选择器语法)， （例如， "var dy = ul.find('.dy'); // 获得JavaScript, Python, Scheme"）
-		在某个节点的所有子节点中查找, 它本身又接收一个任意的选择器
+		在某个节点的所有子节点中查找, 它本身又接收一个任意的选择器,例如， find(filter)
 		find("*")返回所有下层元素
 	parent()：
 		当前节点开始向上查找，不一定只有父节点， 可能是祖先节点，
@@ -1028,42 +1028,145 @@ jQuery：
 	为什么有的动画没有效果：：
 		jQuery动画的原理是逐渐改变CSS的值， 很多不是block性质的DOM元素，对它们设置css， 如height， 根本就不起作用，所以动画也就没有效果
 		jQuery没有实现对"background-color"的动画效果，用"animate()"设置"background-color"也没有效果, 用CSS3的transition代替animate（）
+AJAX：：
+	用jQuery的相关对象处理AJAX，不需要考虑浏览器问题，代码也简化
+	ajax：：
+		jQuery在全局对象就是jQuery（也就是$）， 绑定了ajax()函数，用于执行AJAX， ajax(url, settings对象)，返回jqXHR对象，它类似Promise对象
+		settings对象：：
+			async：：是否异步执行AJAX请求，默认为true，千万不要指定为false
+			method：：发送的Method，缺省为'GET'，可指定为'POST'、'PUT'等
+			contentType：：发送POST请求的格式，默认值为'application/x-www-form-urlencoded; charset=UTF-8'，也可以指定为"text/plain、application/json"
+			data：：发送的数据，可以是字符串、数组或object。如果是GET请求，data将被转换成query附加到URL上，如果是POST请求，根据contentType把data序列化成合适的格式
+			headers：：发送的额外的HTTP头，必须是一个object
+			dataType：接收的数据格式，可以指定为'html'、'xml'、'json'、'text'等，缺省情况下根据响应的"Content-Type"猜测
+		例如：：发送一个GET请求，并返回一个JSON格式的数据
+		var jqxhr = $.ajax('/api/categories', {
+		    dataType: 'json'
+		}); // 请求已经发送了
+		jQuery的jqXHR对象类似一个Promise对象， 用于处理各种回调， 且可以链式调用;调用"done（）"表示成功， "fail()"表示失败， "always（）"表示请求完成，无论成功或失败都会调用
+	get：：
+		功能和GET请求相同
+		例如：：
+			var jqxhr = $.get('/path/to/resource', {
+			    name: 'Bob Lee',
+			    check: 1
+			});
+		第二个参数如果是object，jQuery自动把它变成query string然后加到URL后面，实际的URL是"/path/to/resource?name=Bob%20Lee&check=1", 就可以不关心如何用URL编码并构造一个query string
+	post：：
+		和get()类似， 但第二个参数默认被序列化为"application/x-www-form-urlencoded"
+		例如：：
+			var jqxhr = $.post('/path/to/resource', {
+			    name: 'Bob Lee',
+			    check: 1
+			});
+			实际构造的数据"name=Bob%20Lee&check=1"作为POST的body被发送
+	getJSON：：
+		getJSON(resource path或URL， function或者object【是发送到服务器的数据】)可以快速通过GET获取一个JSON对象
+		同样有done（）， fail（）， always（）
+		例如：：
+			var jqxhr = $.getJSON('/path/to/resource', {
+			    name: 'Bob Lee',
+			    check: 1
+			}).done(function (data) {
+			    // data已经被解析为JSON对象了
+			});
+	安全限制：：
+		本质就是跨域访问问题， 和用JavaScript写AJAX完全一样
+		如果需要使用JSONP，可以在ajax()中设置"jsonp: 'callback'"，让jQuery实现JSONP跨域加载数据
+扩展：：
+	扩展jQuery来实现自定义方法， 看上去和jQuery本身的方法没有什么区别, 例如highlight（）， 也叫编写jQuery插件
+	编写jQuery插件：：
+		通过扩展"$.fn"对象, 给jQuery对象绑定一个新方法, "$.fn.func()"要善于用"this"
+		例如：：
+			$.fn.highlight1 = function () {
+			    // this已绑定为当前jQuery对象:
+			    this.css('backgroundColor', '#fffceb').css('color', '#d85030');
+			    return this;
+			}
+		调用直接jquery对象.func(), 例如， $('#test-highlight1 span').highlight1();
+		"return this;"作用是支持链式调用
+		链式调用的本质：：返回对象， 有了对象就能用函数
+		函数内部的this在调用时被绑定为jQuery对象，所以函数内部代码可以调用所有jQuery对象的方法
+		"this"仅在类函数再嵌套一个函数， 或者单独一个函数用到this时候会出现指向问题； 普通对象的函数例里用this，没有问题
+		"<span>"作用就是分割文字
+		自定义函数可以带参数，比如传入一个"setting对象"
+		例如：：
+			$.fn.highlight2 = function (options) {
+			    // 要考虑到各种情况:
+			    // options为undefined
+			    // options只有部分key
+			    var bgcolor = options && options.backgroundColor || '#fffceb';
+			    var color = options && options.color || '#d85030';
+			    this.css('backgroundColor', bgcolor).css('color', color);
+			    return this;
+			}
+		设置默认值，两种方法：：
+			用短路操作， "&&和||", 总能得到一个有效的值
+			用"$.extend(target, obj1, obj2, ...)"它把多个object对象的属性合并到第一个target对象中，遇到同名属性，总是使用靠后的对象的值
+			例如：：
+				// 把默认值和用户传入的options合并到对象{}中并返回:
+				var opts = $.extend({}, {
+				    backgroundColor: '#00a8e6',
+				    color: '#ffffff'
+				}, options);
+		可以实现用户能修改设定的默认值， 本质是函数对象调用自身的属性
+		例如：：
+			$.fn.highlight = function (options) {
+			    // 合并默认值和用户设定值:
+			    var opts = $.extend({}, $.fn.highlight.defaults, options);
+			    this.css('backgroundColor', opts.backgroundColor).css('color', opts.color);
+			    return this;
+			}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+			// 设定默认值:
+			$.fn.highlight.defaults = {
+			    color: '#d85030',
+			    backgroundColor: '#fff8de'
+			}
+		注意， 这里这里的defaults是设置highlight函数对象的属性， 不是链式调用， 链式调用函数要加"()"， 例如， "$('span.hl').highlight1().slideDown();"
+		调用方式：：
+			$.fn.highlight.defaults.color = '#659f13';
+			$.fn.highlight.defaults.backgroundColor = '#f2fae3';
+			$('#test-highlight p:first-child span').highlight();
+			$('#test-highlight p:last-child span').highlight({
+			    color: '#dd1144'
+			});
+		编写jQuery插件原则：：
+			给"$.fn"绑定函数，实现插件的代码逻辑；
+			插件函数最后要"return this;"以支持链式调用；
+			插件函数要有默认值，绑定在"$.fn.<pluginName>.defaults"上；
+			用户在调用时可传入"设定值"以便覆盖默认值。
+	针对特定元素的扩展：：
+		submit()方法只能针对form， 用"filter()"实现
+		例如， 给所有指向外链的超链接加上跳转提示：：
+			步骤一：：
+				先写出用户调用的代码：："$('#main a').external();"， 例如， "$('#test-external a').external();"
+			步骤二：：
+				编写一个"external"扩展,只针对"<a>"元素
+				$.fn.external = function () {
+				    // return返回的each()返回结果，支持链式调用:
+				    return this.filter('a').each(function () {
+				        // 注意: each()内部的回调函数的this绑定为DOM本身!
+				        var a = $(this);
+				        var url = a.attr('href');
+				        if (url && (url.indexOf('http://')===0 || url.indexOf('https://')===0)) {
+				           //阻止用户直接点开链接，让其通过确认弹窗来做跳转
+				            a.attr('href', '#0')
+				            //变为：：<a href="#0" target="_blank">Example</a>，  把href里的链接值为#0，这样用户直接点链接就无法跳转到该地址
+				             .removeAttr('target')
+				             //变为：：<a href="#0">Example</a>把target属性删除，因为target="_blank"会新开一个浏览器空白窗口
+				             .append(' <i class="uk-icon-external-link"></i>')
+				             //变为：：<a href="#0">Example <i class="uk-icon-external-link"></i></a>， 加上一个\<i\>标签，对应的是在链接文字后面加一个提示的图标
+				             .click(function () {
+				                if(confirm('你确定要前往' + url + '？')) {
+				                    window.open(url);
+				                }
+				            });
+				        }
+				    });
+				}
+			注意filter返回一个list， each相当于遍历每个元素， each()内部的回调函数的this绑定为DOM本身
+			如果用"$('#test-external').external();", filter那里用find(filter)进行过滤， 因为filter不能找到内嵌元素
 *******************************************************************************
 补上
 *******************************************************************************
@@ -1113,12 +1216,415 @@ Chaining：：
 		 .value();
 		// [1, 3, 5]
 	因为每一步返回的都是包装对象，所以最后一步的结果需要调用value()获得最终结果
-
-
-
-
-
-
-
-
-
+Node.js：：
+	google， apple都用WebKit， Google的JavaScript引擎V8， 以BSD许可证开源
+	javascript写后端优势：：事件驱动机制 + V8高性能引擎
+安装Node.js和npm：：
+	安装Node.js：：
+		退出Node.js环境，连按两次"Ctrl+C"
+	npm：：
+		Node.js的包集中管理工具（package manager）， 不用管代码存在哪，应该从哪下载， dependence等
+第一个Node程序：：
+	前端JavaScript代码都在浏览器中运行， 后端在Node环境中执行， 直接在计算机上以命令行的方式运行
+	第一行总是写上"'use strict';", 记得分号
+	运行javascript， "node hello.js"
+	文件名只能是字母、数字和下划线， 
+命令行模式和Node交互模式：：
+	命令行直接执行"node hello.js", 进入node">", 直接输入javascript代码， 和Python执行相似
+	打印用"console.log()", 类似python
+	使用严格模式：："node --use_strict calc.js..."直接为所有js文件开启严格模式, 不用为每个文件都写上'use strict';
+搭建Node开发环境：：
+	在一个环境里编码、运行、调试(启动快，执行简单，调试方便)
+	Java有Eclipse，Intellij idea等，C#有Visual Studio， Python有pycharm， Node.js有Intellij idea， Visulal Studio Code
+	VS Code以文件夹作为工程目录（Workspace Dir），所有的JavaScript文件都存放在该目录下, 工程目录下需要一个.vscode的配置目录，里面存放VS Code需要的配置文件
+模块：：
+	可维护就是方便管理的意思， 比如分组， 归类， 复用
+	在Node环境中，一个.js文件就称为一个模块（module）， 模块的名字就是文件名（去掉.js后缀）
+	使用模块可避免函数名和变量名冲突， 自己在编写模块时，不必考虑名字会与其他模块冲突
+	模块要给其他模块引用， 需要把函数greet作为模块的输出暴露出去， "module.exports = greet;"
+	例如：：
+		'use strict';
+		var s = 'Hello';
+		function greet(name) {
+		    console.log(s + ', ' + name + '!');
+		}
+		module.exports = greet;
+	其他模块引用函数用"require", 例如：："require('./hello')", "./"因为main.js和hello.js位于同一个目录，用当前目录"."
+	如果只写模块名，例如：："require('hello');", 则Node会依次在内置模块、全局模块和当前模块下查找hello.js，很可能会得到一个错误"Cannot find module 'hello'"
+	例如：：
+		'use strict';
+		// 引入hello模块:
+		var greet = require('./hello');
+		var s = 'Michael';
+		greet(s); // Hello, Michael!
+	检查引用错误：：模块名是否写对了；模块文件是否存在；相对路径是否写对了
+	CommonJS规范：：
+		就是模块加载机制， 
+		模块对外暴露变量（函数也是变量, 变量可以是任意对象、函数、数组），用"module.exports = variable;", 模块引用其他模块暴露的变量，用"var ref = require('module_name')"
+	深入了解模块原理：：
+		大量使用全局变量可能引起文件中相互引用， 改变
+		本质：：用"闭包"实现模块， 把一段JavaScript代码用一个函数包装起来，这段代码的所有“全局”变量就变成了函数内部的局部变量
+		模块的输出"module.exports"实现：：包裹函数，将需要暴露的变量传进"module"对象的exports属性
+		输出变量用module.exports = {key:value}
+		例如：：module.exports = {
+		    greet: greet,
+		    hi: hi,
+		    goodbye: goodbye
+		};
+		或者：：module.exports = greet;
+基本模块：：
+	服务器程序：：没有浏览器的安全限制，而且，必须能接收网络请求，读写文件，处理二进制内容
+	Node.js内置的常用模块是为了实现基本的服务器功能； 这些模块在浏览器环境中无法被执行，因为它们的底层代码是用C/C++在Node.js运行环境中实现的
+	"global"：：
+		唯一的全局对象, 类似浏览器的window对象
+	"process"：：
+		代表当前Node.js进程， 类似python里的system， os
+		例如：： 	
+			process === global.process;
+			process.version;
+			process.platform;
+			process.arch;
+			process.cwd(); //返回当前工作目录
+			process.chdir('/private/tmp'); // 切换当前工作目录
+			process.argv //存储了命令行参数
+		下一轮事件响应中执行代码"process.nextTick()"
+		例如：：
+			// process.nextTick()将在下一轮事件循环中调用:
+			process.nextTick(function () {
+			    console.log('nextTick callback!');
+			});
+			console.log('nextTick was set!');
+			打印：：
+				nextTick was set!
+				nextTick callback!
+			传入process.nextTick()的函数不是立刻执行，而是要等到下一次事件循环
+			响应事件是"当事件发生时执行"， 异步IO是"当事件执行完后， 执行"
+			Node.js进程本身的事件由process对象来处理
+			例如：：
+				// 程序即将退出时的回调函数:
+				process.on('exit', function (code) {
+				    console.log('about to exit with code: ' + code);
+				});
+	判断JavaScript执行环境：：
+		就是判断是在浏览器还是node中
+		例如：：
+			if (typeof(window) === 'undefined') {
+			    console.log('node.js');
+			} else {
+			    console.log('browser');
+			}
+fs：：
+	文件系统模块，负责读写文件
+	和所有其它JavaScript模块不同的是，fs模块同时提供了异步和同步的方法
+	同步IO和异步IO对比：：
+	异步：：
+		$.getJSON('http://example.com/ajax', function (data) {
+		    console.log('IO结果返回后执行...');
+		});
+		console.log('不等待IO结果直接执行后续代码...');
+	同步：：
+				// 根据网络耗时，函数将执行几十毫秒~几秒不等:
+		var data = getJSONSync('http://example.com/ajax');
+	同步好处是代码简单，缺点是程序将等待IO操作，在等待时间内，无法响应其它任何事件
+	异步读取不用等待IO操作，但代码较麻烦
+	异步读文件：：
+		读文本文件, fs.readFile(文件名， 编码【例如"utf-8"】， 处理函数)
+		例如：：
+			'use strict';
+			var fs = require('fs');
+			fs.readFile('sample.txt', 'utf-8', function (err, data) {
+			    if (err) {
+			        console.log(err); //正常读取时，err为null; data为读取到的String
+			    } else {
+			        console.log(data);//当读取发生错误时，err参数代表一个错误对象，data为undefined
+			    }
+			});
+		function (err, data)是Node.js标准的回调函数
+		读取图片文件：：
+		例如：：
+			'use strict';
+			var fs = require('fs');
+			fs.readFile('sample.png', function (err, data) {
+			    if (err) {
+			        console.log(err);
+			    } else {
+			        console.log(data);
+			        console.log(data.length + ' bytes');
+			    }
+			});
+		不管同步还是异步， 如果参数没有"编码"， data将返回一个Buffer对象， 在Node.js中，Buffer对象就是一个包含零个或任意个字节的数组（注意和Array不同， 以字节为单位）
+		Buffer对象可以和String作转换：：
+			例如：：
+				// Buffer -> String
+				var text = data.toString('utf-8');
+				console.log(text);
+			或者：：
+				// String -> Buffer
+				var buf = new Buffer(text, 'utf-8');
+				console.log(buf);
+	同步读文件：：
+		函数名多了"Sync", 并且不接收回调函数，函数直接返回结果
+		读文本文件， fs.readFileSync(函数名， 编码)
+		例如：：
+			'use strict';
+			var fs = require('fs');
+			var data = fs.readFileSync('sample.txt', 'utf-8');
+			console.log(data);
+		同步读取文件发生错误，需要用"try...catch"
+		例如：：
+			try {
+				    var data = fs.readFileSync('sample.txt', 'utf-8');
+				    console.log(data);
+				} catch (err) {
+				    // 出错了
+				}
+	写文件：：
+		异步写， fs.writeFile(文件名， 数据， 处理函数)， 
+		例如：：
+			'use strict';
+			var fs = require('fs');
+			var data = 'Hello, Node.js';
+			fs.writeFile('output.txt', data, function (err) {
+			    if (err) {
+			        console.log(err);
+			    } else {
+			        console.log('ok.');
+			    }
+			});
+		数据是"String"，默认按"UTF-8"编码写入文本文件，如果传入的参数是"Buffer"，则写入的是"二进制文件"
+		回调函数由于只关心成功与否，因此只需要一个err参数
+		同步写， writeFileSync()
+		例如：：
+			'use strict';
+			var fs = require('fs');
+			var data = 'Hello, Node.js';
+			fs.writeFileSync('output.txt', data);
+    stat：：
+    	用fs.stat(文件名， 处理函数)， 获取文件大小，创建时间等信息， 它返回一个Stat对象，能告诉我们文件或目录的详细信息
+    	例如：：
+    		'use strict';
+			var fs = require('fs');
+			fs.stat('sample.txt', function (err, stat) {
+			    if (err) {
+			        console.log(err);
+			    } else {
+			        // 是否是文件:
+			        console.log('isFile: ' + stat.isFile());
+			        // 是否是目录:
+			        console.log('isDirectory: ' + stat.isDirectory());
+			        if (stat.isFile()) {
+			            // 文件大小:
+			            console.log('size: ' + stat.size);
+			            // 创建时间, Date对象:
+			            console.log('birth time: ' + stat.birthtime);
+			            // 修改时间, Date对象:
+			            console.log('modified time: ' + stat.mtime);
+			        }
+			    }
+			});
+			对应的同步函数是statSync()
+	异步还是同步：：
+		启动，结束用同步， 其他都用异步：：
+			绝大部分需要在服务器运行期反复执行业务逻辑的代码，必须使用异步代码，否则，同步代码在执行时期，服务器将停止响应
+			服务器启动时如果需要读取配置文件，或者结束时需要写入到状态文件时，可以使用同步代码
+stream：：
+	仅在服务区端可用， 目的是支持“流”这种数据结构
+	流是一种抽象的数据结构， 源源不断， 数据有序， 必须依次读取，或者依次写入， 不能像Array那样随机定位， 例如字符流
+	标准输入流（stdin）：：从键盘输入到应用程序
+	标准输出流（stdout）：：应用程序输出到显示器
+	把直接操作硬件，改为用对流操作， 例如， 读流， 写流
+	对流操作只需要"响应流的事件", "data"表示可以开始读， "end"表示已读到末尾， "error"表示出错了
+	新建读文件流"fs.createReadStream（文件名， 编码）"， "rs.on"(事件， 处理函数)
+	例如：：
+		'use strict';
+		var fs = require('fs');
+		// 打开一个流:
+		var rs = fs.createReadStream('sample.txt', 'utf-8');
+		rs.on('data', function (chunk) {
+		    console.log('DATA:')
+		    console.log(chunk);
+		});
+		rs.on('end', function () {
+		    console.log('END');
+		});
+		rs.on('error', function (err) {
+		    console.log('ERROR: ' + err);
+		});
+	data事件可能会有多次，每次传递的chunk是流的一部分数据
+	写文件流，只需不断调用write()方法，最后以end()结束，fs.createWriteStream(文件, 编码)， 写二进制文件需要"new Buffer（字符数据， 编码）"
+	例如：： 
+		'use strict';
+		var fs = require('fs');
+		var ws1 = fs.createWriteStream('output1.txt', 'utf-8');
+		ws1.write('使用Stream写入文本数据...\n');
+		ws1.write('END.');
+		ws1.end();
+		var ws2 = fs.createWriteStream('output2.txt');
+		ws2.write(new Buffer('使用Stream写入二进制数据...\n', 'utf-8'));
+		ws2.write(new Buffer('END.', 'utf-8'));
+		ws2.end();
+	所有可以读取数据的流都继承自"stream.Readable"，所有可以写入的流都继承自"stream.Writable"
+	pipe：：
+		本质：：把一个Readable流和一个Writable流串起来， 所有的数据自动从Readable流进入Writable流
+		读流.pipe(写流)
+		例如：： 
+			'use strict';
+			//实现复制功能
+			var fs = require('fs');
+			var rs = fs.createReadStream('sample.txt');
+			var ws = fs.createWriteStream('copied.txt');
+			rs.pipe(ws);
+		当Readable流的数据读取完毕，end事件触发后，将自动关闭Writable流
+		不自动关闭，用"readable.pipe(writable, { end: false });"
+http：：
+	写Web程序， 都是从特别简单开始的
+	Node.js开发的目的：：用JavaScript编写Web服务器程序
+	HTTP协议：：
+		浏览器与服务器之间， 请求， 响应操作
+	HTTP服务器：：
+		应用程序不直接和HTTP协议打交道，而是操作http模块提供的"request"和"response"对象
+		"request"对象封装了HTTP请求，调用request对象的属性和方法就可以拿到所有HTTP请求的信息
+		"response"对象封装了HTTP响应，我们操作response对象的方法，就可以把HTTP响应返回给浏览器
+		例如：： 
+			'use strict';
+			// 导入http模块:
+			var http = require('http');
+			// 创建http server，并传入回调函数:
+			var server = http.createServer(function (request, response) {
+			    // 回调函数接收request和response对象,
+			    // 获得HTTP请求的method和url:
+			    console.log(request.method + ': ' + request.url);
+			    // 将HTTP响应200写入response, 同时设置Content-Type: text/html:
+			    response.writeHead(200, {'Content-Type': 'text/html'});
+			    // 将HTTP响应的HTML内容写入response:
+			    response.end('<h1>Hello world!</h1>');
+			});
+			// 让服务器监听8080端口:
+			server.listen(8080);
+			console.log('Server is running at http://127.0.0.1:8080/');
+	文件服务器：：
+		本质：：解析request.url中的路径，然后在本地找到对应的文件，把文件内容发送出去
+		url模块里的parse()，将一个字符串解析为一个Url对象，url.parse（URL）
+		例如：： 
+			url.parse('http://user:pass@host.com:8080/path/to/file?query=string#hash')
+		用path模块构造本地路径， 不用考虑Windows， Linux差异， 常用"resolve(path)"， "path.join(path1, path2,...)"
+		例如：： 	
+			'use strict';
+			var path = require('path');
+			// 解析当前目录:
+			var workDir = path.resolve('.'); // '/Users/michael'
+			// 组合完整的文件路径:当前目录+'pub'+'index.html':
+			var filePath = path.join(workDir, 'pub', 'index.html');
+			// '/Users/michael/pub/index.html'
+		文件服务器实现：：
+			'use strict';
+			var
+			    fs = require('fs'),
+			    url = require('url'),
+			    path = require('path'),
+			    http = require('http');
+			// 从命令行参数获取root目录，默认是当前目录:
+			var root = path.resolve(process.argv[2] || '.');
+			console.log('Static root dir: ' + root);
+			// 创建服务器:
+			var server = http.createServer(function (request, response) {
+			    // 获得URL的path，类似 '/css/bootstrap.css':
+			    var pathname = url.parse(request.url).pathname;
+			    // 获得对应的本地文件路径，类似 '/srv/www/css/bootstrap.css':
+			    var filepath = path.join(root, pathname);
+			    // 获取文件状态:
+			    fs.stat(filepath, function (err, stats) {
+			        if (!err && stats.isFile()) {
+			            // 没有出错并且文件存在:
+			            console.log('200 ' + request.url);
+			            // 发送200响应:
+			            response.writeHead(200);
+			            // 将文件流导向response:
+			            fs.createReadStream(filepath).pipe(response);
+			        } else {
+			            // 出错了或者文件不存在:
+			            console.log('404 ' + request.url);
+			            // 发送404响应:
+			            response.writeHead(404);
+			            response.end('404 Not Found');
+			        }
+			    });
+			});
+			server.listen(8080);
+			console.log('Server is running at http://127.0.0.1:8080/');	
+			response对象本身是一个Writable Stream，直接用pipe()方法实现自动读取文件内容并输出到HTTP响应
+			fs.stat.isFile()判断文件, fs.stat.isDirectory()判断目录, fs.readdir()可以读出目录下所有文件
+crypto：：
+	三个步骤：：构造加密对象 +　加密/解密　＋ 变成特殊字串
+	包括通用的加密和哈希算法
+	MD5和SHA1：：
+		MD5是哈希算法，给任意数据一个十六进制的字符串的“签名”，createHash（'md5'或'sha1'等）， hash.update(要签名的data)， hash.digest('hex')化成十进制
+	例如：：
+		const crypto = require('crypto');
+		const hash = crypto.createHash('md5');
+		// 可任意多次调用update():
+		hash.update('Hello, world!');
+		hash.update('Hello, nodejs!');
+		console.log(hash.digest('hex')); // 7e1977739c748beac0c0fd14fd26a544
+	update()默认字符串编码为UTF-8，也可以传入Buffer
+	sha256和sha512更安全
+	Hmac：：
+		一种哈希算法， "MD5/SHA1 + 密钥", 密钥发生变化，输入的数据也会得到不同的签名
+		例如：： 
+			const crypto = require('crypto');
+			const hmac = crypto.createHmac('sha256', 'secret-key');
+			hmac.update('Hello, world!');
+			hmac.update('Hello, nodejs!');
+			console.log(hmac.digest('hex')); // 80f7e22570...
+	AES：： 
+		一种常用的对称加密算法， 加解密都用同一个密钥， 需要自己封装好函数，便于使用， 加解密都是用update()
+		例如：： 	
+			const crypto = require('crypto');
+			function aesEncrypt(data, key) {
+			    const cipher = crypto.createCipher('aes192', key);
+			    var crypted = cipher.update(data, 'utf8', 'hex');
+			    crypted += cipher.final('hex');
+			    return crypted;
+			}
+			function aesDecrypt(encrypted, key) {
+			    const decipher = crypto.createDecipher('aes192', key);
+			    var decrypted = decipher.update(encrypted, 'hex', 'utf8');
+			    decrypted += decipher.final('utf8');
+			    return decrypted;
+			}
+			var data = 'Hello, this is a secret message!';
+			var key = 'Password!';
+			var encrypted = aesEncrypt(data, key);
+			var decrypted = aesDecrypt(encrypted, key);
+			console.log('Plain text: ' + data);
+			console.log('Encrypted text: ' + encrypted);
+			console.log('Decrypted text: ' + decrypted);
+		AES有很多不同的算法，如aes192，aes-128-ecb，aes-256-cbc等
+		AES除了密钥外还可以指定IV（Initial Vector），不同的系统只要IV不同，用相同的密钥加密相同的数据得到的加密结果也是不同
+		加密结果两种表示方法：hex和base64， 有时加解密双方用的编程语言不同， 可能会导致不匹配问题
+	Diffie-Hellman：：
+		利用秘密底数 + 取模(素数)， 协商出一个密钥, 两者共用素数和底数
+		例如：： 
+			const crypto = require('crypto');
+			// xiaoming's keys:
+			var ming = crypto.createDiffieHellman(512);
+			var ming_keys = ming.generateKeys();
+			var prime = ming.getPrime();
+			var generator = ming.getGenerator();
+			console.log('Prime: ' + prime.toString('hex'));
+			console.log('Generator: ' + generator.toString('hex'));
+			// xiaohong's keys:
+			var hong = crypto.createDiffieHellman(prime, generator);
+			var hong_keys = hong.generateKeys();
+			// exchange and generate secret:
+			var ming_secret = ming.computeSecret(hong_keys);
+			var hong_secret = hong.computeSecret(ming_keys);
+			// print secret:
+			console.log('Secret of Xiao Ming: ' + ming_secret.toString('hex'));
+			console.log('Secret of Xiao Hong: ' + hong_secret.toString('hex'));
+	数字证书：：
+		数字证书常用在SSL连接（就是Web的https连接）
+		如无特殊需求（例如自己作为Root给客户发认证证书），建议用反向代理服务器如Nginx等Web服务器去处理证书
+		https连接只需要处理服务器端的单向认证
+Web开发：：
+	
