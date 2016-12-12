@@ -135,7 +135,7 @@ Map和Set：
 		无论这个表有多大，查找速度都不会变慢
 		初始化Map：：
 			空， "var m = new Map(); "
-			传二维数组，"var m = new Map([['Michael', 95], ['Bob', 75], ['Tracy', 85]]);"
+			传二维数组，"var m = new Map([['Michael', 95], ['Bob', 75], ['Tracy', 85]]);", Map 与对象不同， 对象用":", Map用"=>", 例如"Map {"Michael" => 95, "Bob" => 75, "Tracy" => 85}"
 		添加：："m.set('Adam', 67); // 添加新的key-value"
 		判读：："m.has('Adam'); // 是否存在key 'Adam': true"
 		查找：："m.get('Adam'); // 67"
@@ -144,7 +144,7 @@ Map和Set：
 		和Map的区别， 不存储value
 		初始化set：：
 			空， "var s1 = new Set(); // 空Set"
-			传Array"var s2 = new Set([1, 2, 3]);"
+			传Array"var s2 = new Set([1, 2, 3]);" //Set {1, 2, 3}
 		添加：："s.add(key)"
 		删除：："s.delete(key)"
 		判读：："s.has(key); // 是否存在key"
@@ -153,7 +153,7 @@ iterable：
 	Array、Map和Set都属于iterable类型， 用"for ... of"遍历， （例如，"for (var x of a) {}"）
 	注意Map每个元素得到的是Array
 	"for ... in"遍历对象的属性名称, 动态添加的元素， 不会算在length里， 且不能遍历Map和Set
-	"for ... of"只循环集合本身的元素
+	"for ... of"只循环集合本身的元素， 与"for ... in" 区别在于， 不受被遍历对象动态添加属性的影响
 	iterable内置的forEach更好， 接收一个函数，每次迭代就自动回调该函数
 	Array：："a.forEach(function (element, index, array)"
 	Set：："s.forEach(function (element, sameElement, set)"
@@ -1627,4 +1627,434 @@ crypto：：
 		如无特殊需求（例如自己作为Root给客户发认证证书），建议用反向代理服务器如Nginx等Web服务器去处理证书
 		https连接只需要处理服务器端的单向认证
 Web开发：：
+	静态Web页面：：无法与用户交互
+	CGI：：Common Gateway Interface， 用C/C++编写， 可以交互，不方便处理修改频繁的情况
+	ASP/JSP/PHP：：脚本语言， ASP是微软的，用VBScript，而JSP用Java编写脚本，PHP本身是开源的脚本语言， 直接用脚本语言嵌入HTML导致的可维护性差
+	MVC：：Model-View-Controller， ASP发展为ASP.Net，JSP和PHP有一大堆MVC框架
+	异步开发（Node.js速度非常快， 因为是异步）、新的MVVM
+	Web框架：：Express， koa
+	ORM框架：：Sequelize
+	模版引擎：：Nunjucks
+	测试框架：：Mocha
+	构建工具：：Gulp
+Koa：：
+	Web框架就是处理请求， 响应
+	是Express的下一代基于Node.js的web框架
+	历史：：
+		Express：：
+			对Node.js的http进行了封装
+			实现异步代码，只能用回调， 如果异步嵌套层次过多，代码写起来就非常难看
+		koa 1.0：：
+			基于ES6， 使用generator实现异步，用yield关键词， 代码看起来像同步， 原本Promise才是为异步设计， 但太复杂
+			例如：：
+				var koa = require('koa');
+				var app = koa();
+				app.use('/test', function *() {
+				    yield doReadFile1();
+				    var data = yield doReadFile2();
+				    this.body = data;
+				});
+				app.listen(3000);
+			把一个function变为异步模式， 用关键字async和await
+			例如：： 
+				async function () {
+				    var data = await fs.read('/file1');
+				}
+		koa2：：
+			基于ES7， 完全使用"Promise" +　"async"来实现异步
+			例如：： 
+				app.use(async (ctx, next) => {
+				    await next();
+				    var data = await doReadFile();
+				    ctx.response.type = 'text/plain';
+				    ctx.response.body = data;
+				});
+koa入门：：
+	两个关键字， "async"和 "await", app.use(async (ctx, next) => {});, ctx包括request 和 response， next（）按代码顺序， 执行下一个异步函数
+	多线程的目的是为了实现异步，多线程是一种实现异步的手段（例如， wait()等资源, notify()释放资源,）, 异步应跟同步比较
+	创建koa2工程：：
+		koa的本质是"middleware"， 用await next()调用
+		例如：： 
+			// 导入koa，和koa 1.x不同，在koa2中，我们导入的是一个class，因此用大写的Koa表示:
+			const Koa = require('koa');
+			// 创建一个Koa对象表示web app本身:
+			const app = new Koa();
+			// 对于任何请求，app将调用该异步函数处理请求：
+			app.use(async (ctx, next) => {
+			    await next();
+			    ctx.response.type = 'text/html';
+			    ctx.response.body = '<h1>Hello, koa2!</h1>';
+			});
+			// 在端口3000监听:
+			app.listen(3000);
+			console.log('app started at port 3000...');
+	安装koa两种方法：：
+		可以用npm命令直接安装koa：：必把当前目录切换到工程目录， "npm install koa@2.0.0"， npm会把koa2以及koa2依赖的所有包全部安装到当前目录的node_modules目录下
+		在package.json里的dependencies依赖包，在工程目录下， "npm install"一次性全装好 
+		任何时候都可以直接删除整个node_modules目录，因为用npm install命令可以完整地重新下载所有依赖。并且，这个目录不应该被放入版本控制中(例如上传github时， ignore)
+	Babel：：
+		把高版本的JavaScript代码转换成低版本的JavaScript代码，并保持逻辑不变
+		要让Node.js运行ES7代码，需要把ES7代码“转换”为ES6代码
+		转码需要指定"presets" 和 "plugins"， 
+		presets是规则，我们"stage-3"规则，"stage-3"规则是ES7的"stage 0~3"的第3阶段规则
+		plugins指定插件来定制转码过程，一个preset就包含了一组指定的plugin
+		每次启动app.js前自动让Babel转码：：
+			核心：：'babel-core/register'的"require（）"代替了正常的"require"
+			第一步：：编写一个start.js文件， 先加载"babel-core/register"，再加载app.js
+			例如：： 
+				var register = require('babel-core/register'); // 执行过后， Babel会用自己的require()， 替换掉Node的require()
+				register({
+				    presets: ['stage-3']
+				});
+				require('./app.js'); //加载的所有代码均会被Babel自动转码后再加载
+			第二步：：在package.json中添加依赖包
+			例如：：
+				"dependencies": {
+				    "babel-core": "6.13.2",
+				    "babel-polyfill": "6.13.0",
+				    "babel-preset-es2015-node6": "0.3.0",
+				    "babel-preset-stage-3": "6.5.0",
+				    "koa": "2.0.0"
+				}
+			第三步骤：：启动程序，用node start.js， 或 npm start【npm start会让npm执行定义在package.json文件中的start对应命令--"scripts": {"start": "node start.js"}】
+	koa middleware：：
+		每个async函数称为middleware
+		把async函数组成处理链， 用await next()调用下一个async函数
+		调用app.use()的顺序决定middleware的顺序
+		如果一个middleware没有调用await next(), 后续的middleware将不再执行
+		"ctx.url"相当于"ctx.request.url"，"ctx.type"相当于"ctx.response.type"
+处理URL：：
+	集中处理URL的middleware， 根据不同的URL调用不同的处理函数， 只需要为美国URL编写处理函数， 用自己判断path
+	"koa-router"：：
+		负责处理URL, 可以npm install【依赖项"koa-router": "7.0.0"】
+		主要就是用router.get(url, 处理函数), router.post(url, 处理函数), 其他：：put、delete、head
+	三步骤：： 
+		导入：：用require， 注意require('koa-router')返回的是函数， 例如：：const router = require('koa-router')();
+		处理函数：：router.get(), router.post()
+		添加中间件， 监听：：app.use(router.routes());， app.listen(3000);
+	例如：：
+		const Koa = require('koa');
+		// 注意require('koa-router')返回的是函数:
+		const router = require('koa-router')();
+		const app = new Koa();
+		// log request URL:
+		app.use(async (ctx, next) => {
+		    console.log(`Process ${ctx.request.method} ${ctx.request.url}...`);
+		    await next();
+		});
+		// add url-route:
+		router.get('/hello/:name', async (ctx, next) => { //变量name， 相当于是/hello/开头的url
+		    var name = ctx.params.name;
+		    ctx.response.body = `<h1>Hello, ${name}!</h1>`;
+		});
+		router.get('/', async (ctx, next) => {
+		    ctx.response.body = '<h1>Index</h1>';
+		});
+		// add router middleware:
+		app.use(router.routes());
+		app.listen(3000);
+		console.log('app started at port 3000...');
+	处理post请求：：
+		post请求的body通常是一个表单，或者JSON
+		"koa-bodyparser"， 解析原始request请求， 然后，把解析后的参数，绑定到"ctx.request.body"
+		用"koa-bodyparser": "3.2.0"安装， 用"const bodyParser = require('koa-bodyparser');"引用， 用"app.use(bodyParser());"调用, "koa-bodyparser"必须在router之前被注册到app对象上
+		例如，登录表单：：
+			表单就是"form +　input"
+			router.get('/', async (ctx, next) => {
+			    ctx.response.body = `<h1>Index</h1>
+			        <form action="/signin" method="post">
+			            <p>Name: <input name="name" value="koa"></p>
+			            <p>Password: <input name="password" type="password"></p>
+			            <p><input type="submit" value="Submit"></p>
+			        </form>`;
+			});
+			router.post('/signin', async (ctx, next) => {
+			    var
+			        name = ctx.request.body.name || '',
+			        password = ctx.request.body.password || '';
+			    console.log(`signin with name: ${name}, password: ${password}`);
+			    if (name === 'koa' && password === '12345') {
+			        ctx.response.body = `<h1>Welcome, ${name}!</h1>`;
+			    } else {
+			        ctx.response.body = `<h1>Login failed!</h1>
+			        <p><a href="/">Try again</a></p>`; //再次登录
+			    }
+			});
+	重构：：
+		将app.js里的处理函数分离出去， 核心：：module.exports， controllers目录里面就是各种处理函数
+		例如：：
+			var fn_index = async (ctx, next) => {
+			    ctx.response.body = `<h1>Index</h1>
+			        <form action="/signin" method="post">
+			            <p>Name: <input name="name" value="koa"></p>
+			            <p>Password: <input name="password" type="password"></p>
+			            <p><input type="submit" value="Submit"></p>
+			        </form>`;
+			};
+			var fn_signin = async (ctx, next) => {
+			    var
+			        name = ctx.request.body.name || '',
+			        password = ctx.request.body.password || '';
+			    console.log(`signin with name: ${name}, password: ${password}`);
+			    if (name === 'koa' && password === '12345') {
+			        ctx.response.body = `<h1>Welcome, ${name}!</h1>`;
+			    } else {
+			        ctx.response.body = `<h1>Login failed!</h1>
+			        <p><a href="/">Try again</a></p>`;
+			    }
+			};
+			module.exports = {
+			    'GET /': fn_index,
+			    'POST /signin': fn_signin
+			};
+		重构三步骤， 本质还是使用"router.get()/.post()"：：
+			创建".js"文件， 并暴露处理函数组成的对象
+			读取controllers目录， 过滤出".js"文件
+			解析对象， 执行处理函数
+		确保每个函数功能非常简单，一眼能看明白，是代码可维护的关键
+	Controller middleware：：	
+		controllers + router组成controller.js
+		所有处理URL的函数按功能组存放在controllers目录, 今后只需要不断往这个目录下加东西, app.js保持不变
+Nunjucks：：
+	模板引擎， 类似python的"jinja2"， 通过替换数据， 输出页面， 模板 + 数据 构造出输出字符串， 变量输出就是一种简单的替换
+	最常见输出是输出HTML， 也可以输出任意格式的文本，如Text，XML，Markdown等
+	为什么用：：JavaScript的模板字符串必须写在JavaScript代码中， 很难处理复杂页面
+	输出HTML核心：：
+		转义：：对特殊字符要转义，避免受到XSS攻击， 例如输出包括了"<script>...</script>", 引号和单书名号将变为"&lt", "&gt;"
+		格式化：：对不同类型的变量要格式化， 例如， 货币用"12,345.00", 日期用"2016-01-01"
+		简单逻辑：：执行一些简单逻辑：：
+			例如：：
+				{{ name }}同学，
+				{% if score >= 90 %}
+				    成绩优秀，应该奖励
+				{% elif score >=60 %}
+				    成绩良好，继续努力
+				{% else %}
+				    不及格，建议回家打屁股
+				{% endif %}
+	Nunjucks：：
+		Mozilla开发， 可以用在Node环境和浏览器端（浏览器端主要用MVVM框架）, 就是用JavaScript重新实现了"jinjia2"
+		本质：：构造function render(view, model) {}函数 	
+		view是模板名称（又称为视图）， model就是数据（javascript中就是一个Object），render返回的字符串，就是模板的输出 
+		模板引擎可以独立使用，不需要依赖koa， ""nunjucks": "2.4.2""
+		使用两步骤：： 
+			通过设置各种参数，得到Environment对象
+			调用evn.render(HTML文件， 对象数据)
+		"||" 和 "&&"：：
+			本质，"&&"真后假前【一假即假】， "||"真前假后【一真即真】 
+			a && b : 将a, b转换为Boolean类型, 再执行逻辑与, true返回b, false返回a 
+			a || b : 将a, b转换为Boolean类型, 再执行逻辑或, true返回a, false返回b 
+			转换规则：：
+				对象为true 
+				非零数字为true 
+				非空字符串为true 
+				其他为false 
+		判断、循环, 用{%...%}包裹：：
+			例如：： 
+				<body>
+					<h3>Fruits List</h3>
+					{% for f in fruits %}
+					<p>{{ f }}</p>
+					{% endfor %}
+				// </body>
+		模板继承：：
+			方便一次性修改页面头、尾
+			本质：：子模块修改基础模块的"header", "body"和"footer"
+			例如：： 
+				定义基本网页base.html：：
+					<html><body>
+					{% block header %} <h3>Unnamed</h3> {% endblock %}
+					{% block body %} <div>No body</div> {% endblock %}
+					{% block footer %} <div>copyright</div> {% endblock %}
+					</body>
+				定义子模块：：
+					{% extends 'base.html' %}
+					{% block header %}<h1>{{ header }}</h1>{% endblock %}
+					{% block body %}<p>{{ body }}</p>{% endblock %}
+				添加数据：：
+					console.log(env.render('extend.html', {
+					    header: 'Hello',
+					    body: 'bla bla bla...'
+					}));
+	性能：：
+		Nunjucks默认使用同步IO读取模板文件， 但有cache， 通过"noCache: false"设置
+		开发时可关闭cache，这样每次重新加载模板，便于实时修改模板； 使用时一定要打开cache，可避免性能问题
+使用MVC：：
+	流程：：用户输入 -> controllers -> Model -> View -> 返回用户HTML
+	异步函数是C：Controller，Controller处理， 比如检查用户名是否存在，取出用户信息等等
+	包含变量{{ name }}的模板是V：View
+	Model就是将要带入View的数据，例如， 一个JavaScript对象， "{ name: 'Michael' }"
+	ctx.render(view, model)，输入模板， 数据， 返回HTML网页
+	步骤：： 
+		编写两个Controller：：
+			处理首页 "GET /"
+			处理登录请求 "POST /signin"
+		编写View：：
+			"Bootstrap"这个CSS框架写HTML
+			先编写base.html， 其他模板都继承自base.html
+		编写middleware：：
+			所有静态资源文件（例如：：bootstrap.css, fonts, bootstrap.js）放到"/static"目录, 方便HTML文件引用
+			处理静态文件的middleware, 注意要构造出文件爱你的完整路径
+			mz模块提供的API和Node.js的fs模块完全相同, 封装了fs对应的函数，并改为Promise, 不再需要写回调函数，直接用await, 例如：："await fs.readFile(fp)" 
+			mime模块用于查找文件的mime类型， 对于JavaScript，MIME类型是"text/javascript"
+			可以npm搜索能用于koa2的处理静态文件的包, 并直接使用
+		集成Nunjucks：：
+			实际是编写一个middleware， 作用：：给ctx对象绑定一个render(view, model)的方法， 使得后面的Controller就可以调用这个方法来渲染模板
+			使用时（'production'）， 要用cache， 开发时(development)，不用cache：：
+			例如：：
+				const isProduction = process.env.NODE_ENV === "produciton"; //开发的时候，环境变量应该设置为'development'，而部署到服务器时，环境变量应该设置为'production'
+				app.use(templating('view', {
+					noCache: !isProduction,
+					watch: !isProduction
+				}))
+			部署就是给用户安装使用
+			生产环境上必须配置环境变量"NODE_ENV = 'production'"，而开发环境不需要配置，实际上NODE_ENV可能是"undefined"，所以判断的时候，不要用"NODE_ENV === 'development'"
+			静态文件的middleware也可用环境变量判断， 生产时不导入Node.js， 开发时导入Node.js：：
+			例如：： 
+				if (! isProduction) {
+				    let staticFiles = require('./static-files');
+				    app.use(staticFiles('/static/', __dirname + '/static'));
+				}	
+			生产时，静态文件是反向代理（如Nginx）处理的，Node程序不需要处理静态文件； 而开发时，需要koa能顺带处理静态文件，否则，就必须手动配置一个反向代理服务器，这样会导致开发环境非常复杂
+		运行：：
+			检查app.js里的middleware的顺序, 就是app.use的顺序， 还要注意 await next()顺序
+			登录：：根据用户输入的Email和Password去数据库查询并判断登录是否成功
+	扩展：：
+		env.render(view, model)时，Model对象不是传入的model变量，而是：："Object.assign({}, ctx.state || {}, model || {})"
+		"Object.assign()"把除第一个参数外的其他参数的所有属性复制到第一个参数中， 类似"$.extend(target, obj1, obj2, ...)"
+		"ctx.state || {}"能把一些公共的变量放入ctx.state并传给View, 例如：：某个用户名， 在Controller里的多个处理函数中用到
+		" model || {}"确保了即使传入undefined，model也会变为默认值{}
+mysql：：
+	访问数据库：：
+		特征：：按照格式写数据到磁盘
+		核心：：快速查询， 因为数据太大无法全部读入内存
+		本质：：先选列， 再选行
+	NoSQL：：以SQL为基础
+	数据库类别：：
+		付费：：Oracle， SQL Server， DB2，IBM， Sybase
+		免费开源：：MySQL， PostgreSQL， sqlite（嵌入式数据库，适合桌面和移动应用）
+	安装MySQL：：
+		编辑MySQL的配置文件， 改编码为"UTF-8"
+使用Sequelize：：
+	Sequelize是Node的ORM框架
+	唯一方法：：通过网络发送SQL命令，然后，MySQL服务器执行后返回结果
+	访问MySQL服务器的软件包， 通常称为MySQL驱动程序（本质就是一些API）
+	ORM：：
+		一个表是一个类， 一行就是一个对象; "Object-Relational Mapping"
+		调用方法：：
+			1， sequelize返回Promise对象.then().catch()
+		 	2， ES7的await， 用来调用任何一个Promise对象， 例如：："var pets = await Pet.findAll();"
+		注意：：await只有一个限制，就是必须在async函数中调用
+		例如：： 
+			(async () => {
+			    var pets = await Pet.findAll();
+			})();
+		koa的处理函数都是async函数， 所以在koa的async函数中直接写await访问数据库
+	实战：：
+		数据库存放的就是一堆"表"
+		创建表，三步骤：：
+			授权能执行的操作：：用"grant all privileges on 数据库.* to 用户名@'%' identified by 密码;"
+			切换数据库：：用"use 数据库名"；
+			创建数据库表：：create table + primary key
+		mysql是驱动, 我们不直接使用，但是sequelize会用
+		mysql默认3306窗口， config.js配置文件包括：：
+			var config = {
+			    database: 'test', // 使用哪个数据库
+			    username: 'www', // 用户名
+			    password: 'www', // 口令
+			    host: 'localhost', // 主机名
+			    port: 3306 // 端口号，MySQL默认3306
+			};
+			module.exports = config;
+		Sequelize操作MySQL三步骤：：
+			创建一个sequelize对象实例, 相当于配置文件
+			定义模型（例如，Pet类），告诉Sequelize如何映射数据库表， sequelize.define(名称， 列名和数据类型和主键等， 额外配置timestamps)
+			往数据库塞数据Pet.create(对象).then().catch()或(async=> {...await Pet.create(对象)})();
+		查数据用findAll（{where: {}}）, 例如await Pet.findAll({where: {name: 'Gaffey'}})
+		更新数据用save(), 例如：： "await p.save();"
+		删除数据用destroy(), 例如：： "await p.destroy();"
+		多个async调用是同时执行的，查询比插入要快
+	Model：： 
+		通过sequelize.define()返回的Pet称为Model，它表示一个数据模型
+		通过Pet.findAll()返回的一个或一组对象称为Model实例， 每个实例都可以直接通过JSON.stringify序列化为JSON字符串，和普通JSON对象相比，多了一些由Sequelize添加的方法，比如save()和destroy()
+		使用Sequelize操作数据库的一般步骤：：
+			通过某个Model对象的findAll()方法获取实例【findAll()方法可以接收where、order这些参数，这和将要生成的SQL语句是对应的】
+			如果要更新实例，先对实例属性赋新值，再调用save()方法；
+			如果要删除实例，直接调用destroy()方法
+建立Model：：
+	不同人员可以对同一个表定义不同Model, 一个映射表就是一个Model， Model不统一，很多代码也无法复用
+	Model：： 
+		五条规范：：
+			Model存放的文件夹必须在models内，并且以Model名字命名，例如：Pet.js，User.js等等
+			统一主键，名称必须是id，类型必须是STRING(50)
+			主键可以自己指定，也可以由框架自动生成（如果为null或undefined）
+			所有字段默认为NOT NULL，除非显式指定
+			统一timestamp机制，每个Model必须有createdAt、updatedAt和version，分别记录创建时间、修改时间和版本号。其中，createdAt和updatedAt以BIGINT存储时间戳，最大的好处是无需处理时区，排序方便。version每次修改时自增
+		不要直接使用Sequelize的API，而是通过db.js间接地定义Model， db.js的作用是统一Model的定义
+		db.js原理：：构建新函数去调用sequelize.define()
+	数据库配置：：
+		config.js：：
+			config-default.js：存储默认的配置【mysql层面配置】
+			config-override.js：存储特定的配置【database层面配置】
+			config-test.js：存储用于测试的配置【test层面配置】
+		用config.js实现不同环境读取不同的配置文件,用"process.env.NODE_ENV === 'test'"等判断
+		读取测试文件规则：：
+			如果是测试环境，就读取config-test.js
+			如果不是测试环境， 读取config-default.js
+			第二规则之后， 如果overrideConfig文件存在， 读取config-override.js， 如果文件不存在， 忽略
+		好处：：
+			开发环境下，团队统一使用默认的配置，并且无需config-override.js
+			部署到服务器时，由运维团队配置好config-override.js，以覆盖config-override.js的默认设置
+			测试环境下，本地和CI服务器统一使用config-test.js，测试数据库可以反复清空，不会影响开发
+		配置文件难点：：保证开发效率，避免服务器配置文件泄漏，方便地执行测试 
+	使用Model：：
+		要使用Model，就需要引入对应的Model文件，例如：User.js
+		自动扫描并导入所有Model， 例如写一个model.js
+	工程结构：：
+		sync()可以自动创建数据库, 自动创建出表
+		开发时，首次使用sync()， 可以自动创建出表，避免手动运行SQL
+		测试时自动创建出表，不用自己维护SQL脚本，可以随时修改Model的定义，并立刻运行测试
+mocha：：
+	单元测试框架， 浏览器和Node.js环境都可运行
+	主要特点：：
+		可以测试异步代码
+		可以自动运行所有测试，也可只运行特定的测试
+		可以支持"before", "after", "beforeEach"和"afterEach"来编写初始化代码
+	assert.strictEqual(函数， 应该得到的值)
+	如果第一个assert报错，后面的测试不执行
+	mocha test：：
+		通常有一个test文件，存放所有test
+		如果一个模块在运行的时候并不需要，仅仅在开发时才需要，可以放到devDependencies， 正式打包发布时，devDependencies的包不会被包含进来
+		尽量不要安装全局模块，因为全局模块会影响到所有Node.js的工程
+		mocha默认会执行test目录下的所有测试，不要去改变默认目录
+		采用BDD-style测试，describe("name", function)可以任意嵌套, 每个it("name", function() {...})就代表一个测试
+		例如：： 
+			it('sum(1, 2) should return 3', () => {
+			    assert.strictEqual(sum(1, 2), 3);
+			});
+		编写测试原则：：一次只测一种情况，且测试代码要非常简单， 编写多个测试来分别测试不同的输入， 并使用assert判断输出是否是我们所期望的
+	运行测试：：
+		三种方法：：
+			方法一, 命令行，切换到hello-test目录，然后运行"mocha"
+			方法二, 在package.json中添加npm命令"scripts": { "test": "mocha" },然后在hello-test目录下执行 "npm test"
+			方法三, 在VS Code中创建配置文件.vscode/launch.json，然后在第二个配置选项Test中， "program": "${workspaceRoot}/node_modules/mocha/bin/mocha"， "env": {"NODE_ENV": "test"}
+	before和after：：
+		"before、after、beforeEach和afterEach"实现在测试前初始化资源，测试后释放资源， 类似python里的"setUp()"和"tearDown()"
+		每个test执行前后会分别执行beforeEach()和afterEach()
+		一组test执行前后会分别执行before()和after()
+异步测试：：
+	new Function(字符串参数1， 字符串参数2， "return + 内容"), 返回一个函数
+	格式：：it('name', function (done) { done(err)...done()}
+	也可以直接把async函数当成同步函数来测试,
+	例如：： 	
+		it('#async function', async () => {
+		    let r = await hello();
+		    assert.strictEqual(r, 15);
+		});
+	让mocha在测试前加载Babel
+		方法一， mocha命令行用"--require"可以加载指定的包
+		方法二， 在package.json中把script改为"test": "mocha --require hook"
+		方法三， 在VS Code配置文件中把args改为"args": ["--require", "hook"]
+	坚持使用async和await，这样，编写测试也同样简单
+WebSocket：：
 	
